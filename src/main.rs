@@ -25,8 +25,20 @@ fn main() -> Result<(), serde_yaml::Error> {
     let mut is_first_window = true;
     match &yaml_map["windows"] {
         serde_yaml::Value::Sequence(s) => {
-            for w in s {
+            for (wi, w) in s.iter().enumerate() {
                 match w {
+                    serde_yaml::Value::String(cmd) => {
+                        Command::new("tmux")
+                            .args(&[
+                                "send-keys",
+                                "-t",
+                                format!("{}:{}.{}", &session_name, wi, 0).as_str(),
+                                format!("{}", cmd).as_str(),
+                                "C-m",
+                            ])
+                            .output()
+                            .expect("Failed to execute process.");
+                    }
                     serde_yaml::Value::Mapping(m) => {
                         for (k, v) in m.iter() {
                             // println!("({:#?}, {:#?})", k, v);
@@ -48,6 +60,18 @@ fn main() -> Result<(), serde_yaml::Error> {
                                 .output()
                                 .expect("Failed to execute process.");
                             match v {
+                                serde_yaml::Value::String(cmd) => {
+                                    Command::new("tmux")
+                                        .args(&[
+                                            "send-keys",
+                                            "-t",
+                                            format!("{}:{}.{}", &session_name, wi, 0).as_str(),
+                                            format!("{}", cmd).as_str(),
+                                            "C-m",
+                                        ])
+                                        .output()
+                                        .expect("Failed to execute process.");
+                                }
                                 serde_yaml::Value::Mapping(inner) => {
                                     if let Some(layout) =
                                         inner.get(&serde_yaml::Value::String("layout".into()))
@@ -81,10 +105,30 @@ fn main() -> Result<(), serde_yaml::Error> {
                                         }
                                     }
 
-                                    if let Some(_panes) =
+                                    if let Some(panes) =
                                         inner.get(&serde_yaml::Value::String("panes".into()))
                                     {
-                                        // println!("Has Panes...{:#?}", panes);
+                                        if let serde_yaml::Value::Sequence(s) = panes {
+                                            println!("Has Panes...{:#?}", s);
+                                            for (pi, p) in s.iter().enumerate() {
+                                                if let serde_yaml::Value::String(cmd) = p {
+                                                    Command::new("tmux")
+                                                        .args(&[
+                                                            "send-keys",
+                                                            "-t",
+                                                            format!(
+                                                                "{}:{}.{}",
+                                                                &session_name, wi, pi
+                                                            )
+                                                            .as_str(),
+                                                            format!("{}", cmd).as_str(),
+                                                            "C-m",
+                                                        ])
+                                                        .output()
+                                                        .expect("Failed to execute process.");
+                                                }
+                                            }
+                                        }
                                     }
                                 }
 

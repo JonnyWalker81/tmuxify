@@ -49,7 +49,7 @@ windows:
       # 'before' represents legacy functionality and will be deprecated in a future release, in favour of 'after'
       # synchronize: after
       panes:
-        - fish
-        - fish
-  - optimus-prime: fish
-  - projects-service: fish
+        - cd ~/Repositories/doom-emacs
+        - cd ~
+  - optimus-prime: cd ~
+  - projects-service: cd ~
