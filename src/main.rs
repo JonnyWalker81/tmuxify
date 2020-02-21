@@ -1,8 +1,63 @@
+use clap::Clap;
 use std::process::Command;
 
-fn main() -> Result<(), serde_yaml::Error> {
+#[derive(Clap, Debug)]
+#[clap(version = "1.0", author = "Jonathan Rothberg")]
+struct Opts {
+    project_name: Option<String>,
+    #[clap(subcommand)]
+    subcmd: Option<SubCommand>,
+}
+
+#[derive(Clap, Debug)]
+enum SubCommand {
+    #[clap(name = "new")]
+    New(NewCmd),
+    #[clap(name = "edit")]
+    Edit(EditCmd),
+    #[clap(name = "delete")]
+    Delete(DeleteCmd),
+}
+
+#[derive(Clap, Debug)]
+struct NewCmd {
+    name: String,
+}
+
+#[derive(Clap, Debug)]
+struct EditCmd {
+    name: String,
+}
+
+#[derive(Clap, Debug)]
+struct DeleteCmd {
+    name: String,
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     // println!("Hello, world!");
 
+    let opts: Opts = Opts::parse();
+
+    match opts.project_name {
+        Some(n) => {
+            println!("Project Name: {}", n);
+        }
+        None => match opts.subcmd {
+            Some(SubCommand::New(n)) => {}
+            Some(SubCommand::Edit(n)) => {}
+            Some(SubCommand::Delete(n)) => {}
+            _ => {}
+        },
+        _ => {}
+    }
+
+    let _ = run();
+
+    Ok(())
+}
+
+fn run() -> Result<(), serde_yaml::Error> {
     let yaml = std::fs::read_to_string("sample.yml").unwrap();
 
     let yaml_map: serde_yaml::Value = serde_yaml::from_str(&yaml)?;
@@ -16,6 +71,7 @@ fn main() -> Result<(), serde_yaml::Error> {
     // println!("Yaml: {:#?}", yaml_map["root"]);
     // println!("Yaml: {:#?}", yaml_map["windows"]);
     // println!("Yaml: {:#?}", yaml_map["windows"][0]["doom"]);
+    //
 
     Command::new("tmux")
         .args(&["new", "-d", "-s", &session_name])
