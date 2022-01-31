@@ -1,7 +1,8 @@
-use clap::Clap;
+// use clap::Clap;
+use clap::Parser;
 use std::process::Command;
 
-#[derive(Clap, Debug)]
+#[derive(Parser, Debug)]
 #[clap(version = "1.0", author = "Jonathan Rothberg")]
 struct Opts {
     project_name: Option<String>,
@@ -9,7 +10,7 @@ struct Opts {
     subcmd: Option<SubCommand>,
 }
 
-#[derive(Clap, Debug)]
+#[derive(Parser, Debug)]
 enum SubCommand {
     #[clap(name = "new")]
     New(NewCmd),
@@ -19,17 +20,17 @@ enum SubCommand {
     Delete(DeleteCmd),
 }
 
-#[derive(Clap, Debug)]
+#[derive(Parser, Debug)]
 struct NewCmd {
     name: String,
 }
 
-#[derive(Clap, Debug)]
+#[derive(Parser, Debug)]
 struct EditCmd {
     name: String,
 }
 
-#[derive(Clap, Debug)]
+#[derive(Parser, Debug)]
 struct DeleteCmd {
     name: String,
 }
@@ -39,9 +40,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let opts: Opts = Opts::parse();
 
+    let mut name = String::new();
     match opts.project_name {
         Some(n) => {
             println!("Project Name: {}", n);
+            name = n.clone();
         }
         None => match opts.subcmd {
             Some(SubCommand::New(n)) => {}
@@ -52,13 +55,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         _ => {}
     }
 
-    let _ = run();
+    let project_name = if !name.is_empty() {
+        let home_dir = std::env::var("HOME").unwrap_or("~".to_string());
+        Some(format!("{}/.config/tmuxify/{}.yml", home_dir, name))
+    } else {
+        None
+    };
+
+    let _ = run(project_name);
 
     Ok(())
 }
 
-fn run() -> Result<(), serde_yaml::Error> {
-    let yaml = std::fs::read_to_string("sample.yml").unwrap();
+fn run(name: Option<String>) -> Result<(), serde_yaml::Error> {
+    let yaml = if let Some(name) = name {
+        std::fs::read_to_string(name).unwrap()
+    } else {
+        std::fs::read_to_string("sample").unwrap()
+    };
 
     let yaml_map: serde_yaml::Value = serde_yaml::from_str(&yaml)?;
 
@@ -72,6 +86,10 @@ fn run() -> Result<(), serde_yaml::Error> {
     // println!("Yaml: {:#?}", yaml_map["windows"]);
     // println!("Yaml: {:#?}", yaml_map["windows"][0]["doom"]);
     //
+
+    if attach_session(&session_name) {
+        return Ok(());
+    }
 
     Command::new("tmux")
         .args(&["new", "-d", "-s", &session_name])
@@ -201,10 +219,15 @@ fn run() -> Result<(), serde_yaml::Error> {
     }
 
     // println!("Attaching...");
-    Command::new("tmux")
+    attach_session(&session_name);
+    Ok(())
+}
+
+fn attach_session(session_name: &str) -> bool {
+    let status = Command::new("tmux")
         .args(&["attach-session", "-t", &session_name])
         .status()
         .expect("Failed to execute process.");
 
-    Ok(())
+    status.success()
 }
